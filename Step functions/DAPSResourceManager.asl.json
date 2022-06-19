@@ -1,0 +1,410 @@
+{
+  "Comment": "This Step function Manages the request and approve process involved in requesting a resource to the regional managers",
+  "StartAt": "Add Execution Id",
+  "States": {
+    "Add Execution Id": {
+      "Type": "Pass",
+      "Next": "Started State",
+      "Parameters": {
+        "executionId.$": "$$.Execution.Id"
+      },
+      "ResultPath": "$.Execution"
+    },
+    "Started State": {
+      "Type": "Pass",
+      "Next": "Validate Form Token",
+      "Result": {
+        "isStopped": "No"
+      },
+      "ResultPath": "$.isStopped"
+    },
+    "Validate Form Token": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.Ftoken",
+          "StringMatches": "ast-8+A683=NUIoenmSE¡?DG65bpQW3Ki54vrP93;_",
+          "Next": "Send Approval Request"
+        }
+      ],
+      "Default": "Send Task Result",
+      "Comment": "validates Ftoken to be correct"
+    },
+    "Send Task Result": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "arn:aws:lambda:us-east-1:278406292525:function:ApprovalEmailsFunction:$LATEST",
+        "Payload": {
+          "step.$": "$$.State.Name",
+          "name_in_input.$": "$.name",
+          "output.$": "$.output",
+          "Frequest.$": "$.Frequest",
+          "Fopportunity.$": "$.Fopportunity",
+          "Fservice.$": "$.Fservice",
+          "Fpublicip.$": "$.Fpublicip",
+          "Ftimestart.$": "$.Ftimestart",
+          "Ftimeend.$": "$.Ftimeend",
+          "executionId.$": "$.Execution.executionId"
+        }
+      },
+      "Next": "Success"
+    },
+    "Success": {
+      "Type": "Succeed"
+    },
+    "Send Approval Request": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke.waitForTaskToken",
+      "Parameters": {
+        "FunctionName": "arn:aws:lambda:us-east-1:278406292525:function:ApprovalEmailsFunction:$LATEST",
+        "Payload": {
+          "step.$": "$$.State.Name",
+          "name_in_input.$": "$.name",
+          "token.$": "$$.Task.Token",
+          "Frequest.$": "$.Frequest",
+          "Ftoken.$": "$.Ftoken",
+          "Fopportunity.$": "$.Fopportunity",
+          "Fservice.$": "$.Fservice",
+          "Fpublicip.$": "$.Fpublicip",
+          "Ftimestart.$": "$.Ftimestart",
+          "Ftimeend.$": "$.Ftimeend",
+          "executionId.$": "$.Execution.executionId"
+        }
+      },
+      "ResultPath": "$.output",
+      "Next": "Send Approved Confirmation",
+      "Catch": [
+        {
+          "ErrorEquals": [
+            "rejected","rejected_with_message"
+          ],
+          "ResultPath": "$.output",
+          "Next": "Send Task Result"
+        }
+      ]
+    },
+    "Send Approved Confirmation": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "arn:aws:lambda:us-east-1:278406292525:function:ApprovalEmailsFunction:$LATEST",
+        "Payload": {
+          "step.$": "$$.State.Name",
+          "name_in_input.$": "$.name",
+          "output.$": "$.output",
+          "Frequest.$": "$.Frequest",
+          "Fopportunity.$": "$.Fopportunity",
+          "Fservice.$": "$.Fservice",
+          "Fpublicip.$": "$.Fpublicip",
+          "Ftimestart.$": "$.Ftimestart",
+          "Ftimeend.$": "$.Ftimeend",
+          "executionId.$": "$.Execution.executionId"
+        }
+      },
+      "Next": "Schedule Start",
+      "ResultPath": null
+    },
+    "Schedule Start": {
+      "Type": "Wait",
+      "Next": "Select Service",
+      "TimestampPath": "$.Ftimestart"
+    },
+    "Select Service": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.Fservice",
+          "StringMatches": "SAP IDES (BW, BAPI and RFC CW)",
+          "Next": "SAP Data"
+        },
+        {
+          "Variable": "$.Fservice ",
+          "StringMatches": "Test Machine",
+          "Next": "Test Machine Data"
+        },
+        {
+          "Variable": "$.Fservice ",
+          "StringMatches": "Tableau Server (Connected to Denodo coronavirus portal)",
+          "Next": "Tableau Data"
+        },
+        {
+          "Variable": "$.Fservice ",
+          "StringMatches": "Cognos Analytics 11.1.7",
+          "Next": "Cognos Data"
+        },
+        {
+          "Variable": "$.Fservice ",
+          "StringMatches": "WebFocus",
+          "Next": "WebFocus Data"
+        },
+        {
+          "Variable": "$.Fservice ",
+          "StringMatches": "Qlik Sense Enterprise",
+          "Next": "Qlik Data"
+        }
+      ],
+      "Comment": "validates Ftoken to be correct",
+      "Default": "Pass Error"
+    },
+    "Tableau Data": {
+      "Type": "Pass",
+      "Next": "Start-Stop EC2 Instance",
+      "Result": {
+        "instancePassword": "6bK9BIoSmw%@?i39TyB?LDjOjtMsV!wX",
+        "instanceId": "",
+        "emailContent": "For the full detailed environment please read the following document: https://docs.google.com/document/d/1yLvwlXn9j2qLRCrvLy4Gd2RbmP2V69tZYxDCOJjAK2E"
+      },
+      "ResultPath": "$.machineData"
+    },
+    "Cognos Data": {
+      "Type": "Pass",
+      "Next": "Start-Stop EC2 Instance",
+      "Result": {
+        "instancePassword": "6bK9BIoSmw%@?i39TyB?LDjOjtMsV!wX",
+        "instanceId": "",
+        "emailContent": "For the full detailed environment please read the following document: https://docs.google.com/document/d/1yLvwlXn9j2qLRCrvLy4Gd2RbmP2V69tZYxDCOJjAK2E"
+      },
+      "ResultPath": "$.machineData"
+    },
+    "WebFocus Data": {
+      "Type": "Pass",
+      "Next": "Start-Stop EC2 Instance",
+      "Result": {
+        "instancePassword": "6bK9BIoSmw%@?i39TyB?LDjOjtMsV!wX",
+        "instanceId": "",
+        "emailContent": "For the full detailed environment please read the following document: https://docs.google.com/document/d/1yLvwlXn9j2qLRCrvLy4Gd2RbmP2V69tZYxDCOJjAK2E"
+      },
+      "ResultPath": "$.machineData"
+    },
+    "Test Machine Data": {
+      "Type": "Pass",
+      "Next": "Start-Stop EC2 Instance",
+      "Result": {
+        "instancePassword": "TestMachinePassword",
+        "instanceId": "i-058b8426fd0130b0e",
+        "emailContent": "TEST MACHINE: \n SAP MOCK:For the full detailed environment please read the following document: https://docs.google.com/document/d/1yLvwlXn9j2qLRCrvLy4Gd2RbmP2V69tZYxDCOJjAK2E"
+      },
+      "ResultPath": "$.machineData"
+    },
+    "Qlik Data": {
+      "Type": "Pass",
+      "Next": "Start-Stop EC2 Instance",
+      "Result": {
+        "instancePassword": "6bK9BIoSmw%@?i39TyB?LDjOjtMsV!wX",
+        "instanceId": "",
+        "emailContent": "For the full detailed environment please read the following document: https://docs.google.com/document/d/1yLvwlXn9j2qLRCrvLy4Gd2RbmP2V69tZYxDCOJjAK2E"
+      },
+      "ResultPath": "$.machineData"
+    },
+    "SAP Data": {
+      "Type": "Pass",
+      "Next": "Start-Stop EC2 Instance",
+      "Result": {
+        "instancePassword": "6bK9BIoSmw%@?i39TyB?LDjOjtMsV!wX",
+        "instanceId": "",
+        "emailContent": "For the full detailed environment please read the following document: https://docs.google.com/document/d/1yLvwlXn9j2qLRCrvLy4Gd2RbmP2V69tZYxDCOJjAK2E \n ---IMPORTANT---: For the service to start working, you will need to connect first with RDP following the data provided in the email. \n Performing this connection will trigger the script to start the services without anymore actions required. This step is required as SAP services need an user to connect to correctly start."
+      },
+      "ResultPath": "$.machineData"
+    },
+    "Pass Error": {
+      "Type": "Pass",
+      "Next": "Send Task Result",
+      "ResultPath": null
+    },
+    "is Stopped": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.isStopped.isStopped",
+          "StringEquals": "Yes",
+          "Next": "Unassign Instance Security Group"
+        }
+      ],
+      "Default": "Create Security Group"
+    },
+    "Unassign Instance Security Group": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "arn:aws:lambda:us-east-1:278406292525:function:AddSecurityGroupByInstanceId:$LATEST",
+        "Payload": {
+          "step.$": "$$.State.Name",
+          "name_in_input.$": "$.name",
+          "Frequest.$": "$.Frequest",
+          "Fopportunity.$": "$.Fopportunity",
+          "Fservice.$": "$.Fservice",
+          "Fpublicip.$": "$.Fpublicip",
+          "Ftimestart.$": "$.Ftimestart",
+          "Ftimeend.$": "$.Ftimeend",
+          "instanceId.$": "$.machineData.instanceId",
+          "instancePassword": "$.machineData.instancePassword",
+          "isStopped.$": "$.isStopped",
+          "GroupId.$": "States.Array($.SecurityGroup.GroupId)"
+        }
+      },
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException"
+          ],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 6,
+          "BackoffRate": 2
+        }
+      ],
+      "Next": "DeleteSecurityGroup",
+      "ResultPath": null
+    },
+    "Create Security Group": {
+      "Type": "Task",
+      "Next": "Add Instance Security Group",
+      "Parameters": {
+        "Description.$": "$.machineData.instanceId",
+        "GroupName.$": "$.Execution.executionId",
+        "VpcId": "vpc-043158a49f541d48c",
+        "TagSpecifications": [
+          {
+            "ResourceType": "security-group",
+            "Tags": [
+              {
+                "Key": "Manager",
+                "Value": "Admin"
+              }
+            ]
+          }
+        ]
+      },
+      "Resource": "arn:aws:states:::aws-sdk:ec2:createSecurityGroup",
+      "ResultPath": "$.SecurityGroup"
+    },
+    "Add Instance Security Group": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "arn:aws:lambda:us-east-1:278406292525:function:AddSecurityGroupByInstanceId:$LATEST",
+        "Payload": {
+          "step.$": "$$.State.Name",
+          "name_in_input.$": "$.name",
+          "Frequest.$": "$.Frequest",
+          "Fopportunity.$": "$.Fopportunity",
+          "Fservice.$": "$.Fservice",
+          "Fpublicip.$": "$.Fpublicip",
+          "Ftimestart.$": "$.Ftimestart",
+          "Ftimeend.$": "$.Ftimeend",
+          "instanceId.$": "$.machineData.instanceId",
+          "instancePassword": "$.machineData.instancePassword",
+          "isStopped.$": "$.isStopped",
+          "GroupId.$": "States.Array($.SecurityGroup.GroupId)"
+        }
+      },
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException"
+          ],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 6,
+          "BackoffRate": 2
+        }
+      ],
+      "Next": "Open Access By Public IP",
+      "ResultPath": null
+    },
+    "Open Access By Public IP": {
+      "Type": "Task",
+      "Next": "Send Running Notification",
+      "Parameters": {
+        "CidrIp.$": "$.Fpublicip",
+        "GroupId.$": "$.SecurityGroup.GroupId",
+        "IpProtocol": "-1"
+      },
+      "Resource": "arn:aws:states:::aws-sdk:ec2:authorizeSecurityGroupIngress",
+      "ResultPath": null
+    },
+    "DeleteSecurityGroup": {
+      "Type": "Task",
+      "Next": "Send Task Result",
+      "Parameters": {
+        "GroupId.$": "$.SecurityGroup.GroupId"
+      },
+      "Resource": "arn:aws:states:::aws-sdk:ec2:deleteSecurityGroup",
+      "ResultPath": null
+    },
+    "Send Running Notification": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "arn:aws:lambda:us-east-1:278406292525:function:ApprovalEmailsFunction:$LATEST",
+        "Payload": {
+          "step.$": "$$.State.Name",
+          "name_in_input.$": "$.name",
+          "output.$": "$.output",
+          "Frequest.$": "$.Frequest",
+          "Fopportunity.$": "$.Fopportunity",
+          "Fservice.$": "$.Fservice",
+          "Fpublicip.$": "$.Fpublicip",
+          "Ftimestart.$": "$.Ftimestart",
+          "Ftimeend.$": "$.Ftimeend",
+          "executionId.$": "$.Execution.executionId",
+          "instancePassword.$": "$.machineData.instancePassword",
+          "instancePublicIp.$": "$.execution.Payload",
+          "emailContent.$": "$.machineData.emailContent"
+        }
+      },
+      "Next": "Schedule Stop",
+      "ResultPath": null
+    },
+    "Schedule Stop": {
+      "Type": "Wait",
+      "TimestampPath": "$.Ftimeend",
+      "Next": "Stopped State"
+    },
+    "Stopped State": {
+      "Type": "Pass",
+      "Next": "Select Service",
+      "Result": {
+        "isStopped": "Yes"
+      },
+      "ResultPath": "$.isStopped"
+    },
+    "Start-Stop EC2 Instance": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "arn:aws:lambda:us-east-1:278406292525:function:StartMachineById:$LATEST",
+        "Payload": {
+          "step.$": "$$.State.Name",
+          "name_in_input.$": "$.name",
+          "Frequest.$": "$.Frequest",
+          "Fopportunity.$": "$.Fopportunity",
+          "Fservice.$": "$.Fservice",
+          "Fpublicip.$": "$.Fpublicip",
+          "Ftimestart.$": "$.Ftimestart",
+          "Ftimeend.$": "$.Ftimeend",
+          "instanceId.$": "$.machineData.instanceId",
+          "instancePassword": "$.machineData.instancePassword",
+          "isStopped.$": "$.isStopped"
+        }
+      },
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException"
+          ],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 6,
+          "BackoffRate": 2
+        }
+      ],
+      "Next": "is Stopped",
+      "ResultPath": "$.execution"
+    }
+  }
+}

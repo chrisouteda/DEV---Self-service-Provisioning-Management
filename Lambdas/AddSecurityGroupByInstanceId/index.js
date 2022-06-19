@@ -19,7 +19,7 @@ exports.handler = (event, context, callback) => {
     };
     console.log("start calls");
     
-    if (event.isStopped.isStopped == "Yes"){
+    if (event.isStopped == "Yes"){
       //Get Security Groups from Machine ID
       ec2.describeInstances(params, function (err, data) {
         if (err) {
@@ -35,13 +35,13 @@ exports.handler = (event, context, callback) => {
             return obj.GroupId;
           });
           console.log("describeInstance3 result: " + JSON.stringify(securityGroups));
-          securityGroups = securityGroups.filter((obj) => {return obj !== event.GroupId[0]})
+          securityGroups = securityGroups.filter((obj) => {return obj !== event.GroupId[0]});
           console.log("Revoking Secgroup: " + JSON.stringify(event.GroupId[0]));
           console.log("describeInstance4 result: " + JSON.stringify(securityGroups));
           params = {
             InstanceId: event.instanceId,
             Groups: securityGroups
-          }
+          };
           console.log("describeInstance5 result: " + JSON.stringify(params));
           ec2.modifyInstanceAttribute(params, function (err, data) {
             if (err) {
@@ -74,7 +74,7 @@ exports.handler = (event, context, callback) => {
           params = {
             InstanceId: event.instanceId,
             Groups: securityGroups
-          }
+          };
           console.log("describeInstance5 result: " + JSON.stringify(params));
           ec2.modifyInstanceAttribute(params, function (err, data) {
             if (err) {

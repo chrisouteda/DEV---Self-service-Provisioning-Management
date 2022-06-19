@@ -897,7 +897,7 @@ Self-service Provisioning Management (SSPM)
         )
         
     else:
-        raise ValueError
+        raise ValueError(event['step'] + " is not a valid state")
 
     print('Sending email:', email_body)
     print('Sending email html:', email_body_html)

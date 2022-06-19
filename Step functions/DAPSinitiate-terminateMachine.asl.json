@@ -1,0 +1,227 @@
+{
+  "Comment": "Step function to start/stop instances",
+  "StartAt": "is Stopped",
+  "States": {
+    "is Stopped": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.transitionStatus.isStopped",
+          "StringEquals": "Yes",
+          "Next": "Send Extension Notification"
+        }
+      ],
+      "Default": "Initiate EC2 Instance"
+    },
+    "Send Extension Notification": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "arn:aws:lambda:us-east-1:278406292525:function:ApprovalEmailsFunction:$LATEST",
+        "Payload": {
+          "step.$": "$$.State.Name",
+          "name_in_input.$": "$.name",
+          "executionId.$": "$.AWS_STEP_FUNCTIONS_STARTED_BY_EXECUTION_ID",
+          "daystowait.$": "$.daystowait"
+        }
+      },
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException"
+          ],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 6,
+          "BackoffRate": 2
+        }
+      ],
+      "Next": "Schedule terminate",
+      "ResultPath": null
+    },
+    "Initiate EC2 Instance": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "arn:aws:lambda:us-east-1:278406292525:function:startInstanceFromAmi:$LATEST",
+        "Payload": {
+          "name_in_input.$": "$.name",
+          "daystowait.$": "$.daystowait",
+          "Fservice.$": "$.Fservice",
+          "Ftimeend.$": "$.Ftimeend",
+          "launchTemplate.$": "$.machineData.launchTemplate"
+        }
+      },
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException"
+          ],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 6,
+          "BackoffRate": 2
+        }
+      ],
+      "Next": "Create Security Group",
+      "ResultPath": "$.machineData.execution",
+      "ResultSelector": {
+        "instanceId.$": "$.Payload.instanceId",
+        "PublicIP.$": "$.Payload.PublicIP",
+        "terminationDate.$": "$.Payload.TerminationTime"
+      }
+    },
+    "Schedule terminate": {
+      "Type": "Wait",
+      "TimestampPath": "$.machineData.execution.terminationDate",
+      "Next": "Terminate EC2 Instance"
+    },
+    "Terminate EC2 Instance": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "arn:aws:lambda:us-east-1:278406292525:function:terminateInstancefromAMI:$LATEST",
+        "Payload": {
+          "name_in_input.$": "$.name",
+          "daystowait.$": "$.daystowait",
+          "Ftimeend.$": "$.Ftimeend",
+          "instanceId.$": "$.machineData.execution.instanceId",
+          "launchTemplate.$": "$.machineData.launchTemplate"
+        }
+      },
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException"
+          ],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 6,
+          "BackoffRate": 2
+        }
+      ],
+      "ResultPath": null,
+      "End": true
+    },
+    "Create Security Group": {
+      "Type": "Task",
+      "Next": "Add Instance Security Group",
+      "Parameters": {
+        "Description.$": "$.machineData.execution.instanceId",
+        "GroupName.$": "$.AWS_STEP_FUNCTIONS_STARTED_BY_EXECUTION_ID",
+        "VpcId": "vpc-043158a49f541d48c",
+        "TagSpecifications": [
+          {
+            "ResourceType": "security-group",
+            "Tags": [
+              {
+                "Key": "Manager",
+                "Value": "Admin"
+              }
+            ]
+          }
+        ]
+      },
+      "Resource": "arn:aws:states:::aws-sdk:ec2:createSecurityGroup",
+      "ResultPath": "$.SecurityGroup"
+    },
+    "Add Instance Security Group": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "arn:aws:lambda:us-east-1:278406292525:function:AddSecurityGroupByInstanceId",
+        "Payload": {
+          "instanceId.$": "$.machineData.execution.instanceId",
+          "isStopped.$": "$.transitionStatus.isStopped",
+          "GroupId.$": "States.Array($.SecurityGroup.GroupId)"
+        }
+      },
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException"
+          ],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 6,
+          "BackoffRate": 2
+        }
+      ],
+      "Next": "Open Access By Public IP",
+      "ResultPath": null
+    },
+    "Open Access By Public IP": {
+      "Type": "Task",
+      "Next": "Send Running Notification",
+      "Parameters": {
+        "CidrIp.$": "$.Fpublicip",
+        "GroupId.$": "$.SecurityGroup.GroupId",
+        "IpProtocol": "-1"
+      },
+      "Resource": "arn:aws:states:::aws-sdk:ec2:authorizeSecurityGroupIngress",
+      "ResultPath": null
+    },
+    "Send Running Notification": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "arn:aws:lambda:us-east-1:278406292525:function:ApprovalEmailsFunction",
+        "Payload": {
+          "step.$": "$$.State.Name",
+          "name_in_input.$": "$.name",
+          "output.$": "$.output",
+          "Fpublicip.$": "$.Fpublicip",
+          "executionId.$": "$.AWS_STEP_FUNCTIONS_STARTED_BY_EXECUTION_ID",
+          "instancePassword.$": "$.machineData.instancePassword",
+          "instancePublicIp.$": "$.machineData.execution.PublicIP",
+          "emailContent.$": "$.machineData.emailContent"
+        }
+      },
+      "Next": "Schedule Stop",
+      "ResultPath": null
+    },
+    "Schedule Stop": {
+      "Type": "Wait",
+      "TimestampPath": "$.Ftimeend",
+      "Next": "Stopped State"
+    },
+    "Stopped State": {
+      "Type": "Pass",
+      "Next": "Stop EC2 Instance",
+      "Result": {
+        "isStopped": "Yes",
+        "toTerminate": "No"
+      },
+      "ResultPath": "$.transitionStatus"
+    },
+    "Stop EC2 Instance": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::states:startExecution.sync:2",
+      "Parameters": {
+        "StateMachineArn": "arn:aws:states:us-east-1:278406292525:stateMachine:DAPSstart-stopMachine",
+        "Input": {
+          "step.$": "$$.State.Name",
+          "name.$": "$.name",
+          "daystowait.$": "$.daystowait",
+          "Frequest.$": "$.Frequest",
+          "Fopportunity.$": "$.Fopportunity",
+          "Fservice.$": "$.Fservice",
+          "Fpublicip.$": "$.Fpublicip",
+          "Ftimestart.$": "$.Ftimestart",
+          "Ftimeend.$": "$.Ftimeend",
+          "machineData.$": "$.machineData",
+          "output.$": "$.output",
+          "SecurityGroup.$": "$.SecurityGroup",
+          "transitionStatus.$": "$.transitionStatus",
+          "AWS_STEP_FUNCTIONS_STARTED_BY_EXECUTION_ID.$": "$$.Execution.Id"
+        }
+      },
+      "Next": "is Stopped",
+      "ResultPath": null
+    }
+  }
+}

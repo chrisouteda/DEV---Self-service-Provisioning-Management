@@ -1,6 +1,5 @@
 let AWS = require('aws-sdk');
 
-var responseString = "vacio_definido";
 
 exports.handler = (event, context, callback) => {
     //const response = {
@@ -14,7 +13,14 @@ exports.handler = (event, context, callback) => {
     
     // create an ec2 object
     const ec2 = new AWS.EC2({apiVersion: '2016-11-15'});
-    responseString = "vacio_definido";
+    
+    var responseString = "vacio_definido";
+    
+    //set new termination date
+    var terminationDate = new Date(event.Ftimeend);
+    terminationDate.setDate( terminationDate.getDate() + parseInt(event.daystowait,10));
+    // termination in minutes for testing
+    //terminationDate.setMinutes( terminationDate.getMinutes() + parseInt(event.daystowait,10));
     
     // setup instance params
     const params = {
@@ -37,12 +43,12 @@ exports.handler = (event, context, callback) => {
           ]
         }
       ]
-    }
+    };
     var endTimeTag = "0";
     
-    if (event.isStopped.isStopped == "Yes"){
+    if (event.isStopped == "Yes"){
       
-      console.log(event.isStopped.isStopped);
+      console.log(event.isStopped);
       console.log("stop");
       
       //Get end time tag assigned to EC2 machine
@@ -71,12 +77,12 @@ exports.handler = (event, context, callback) => {
         }  
        
       });
-      
+      responseString = {"terminationDate": terminationDate.toISOString()};
       callback(null, responseString);
       
     }else{
       
-      console.log(event.isStopped.isStopped);
+      console.log(event.isStopped);
       console.log("start");
       
       ec2.startInstances(params, function(err, data) {
@@ -106,9 +112,13 @@ exports.handler = (event, context, callback) => {
                 {
                   Key: "AutomatedEndTime",
                   Value: event.Ftimeend
+                },
+                {
+                  Key: "AutomatedTerminationTime",
+                  Value: terminationDate.toISOString()
                 }
               ]
-            }
+            };
             
             ec2.createTags(descparams, function(err, data) {
               if (err) {

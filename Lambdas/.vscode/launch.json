@@ -3,11 +3,11 @@
         {
             "type": "aws-sam",
             "request": "direct-invoke",
-            "name": "serverlessrepo-sfn-callback-urls-CreateUrlsForApi-doe0oAwer6T8:create_urls.api_handler (python3.8)",
+            "name": "serverlessrepo-sfn-callback-urls-CreateUrls-8oRkGNhNpdzp:create_urls.direct_handler (python3.8)",
             "invokeTarget": {
                 "target": "code",
-                "projectRoot": "${workspaceFolder}/serverlessrepo-sfn-callback-urls-CreateUrlsForApi-doe0oAwer6T8",
-                "lambdaHandler": "create_urls.api_handler"
+                "projectRoot": "${workspaceFolder}/serverlessrepo-sfn-callback-urls-CreateUrls-8oRkGNhNpdzp",
+                "lambdaHandler": "create_urls.direct_handler"
             },
             "lambda": {
                 "runtime": "python3.8",
@@ -18,14 +18,29 @@
         {
             "type": "aws-sam",
             "request": "direct-invoke",
-            "name": "serverlessrepo-sfn-callback-urls-CreateUrls-8oRkGNhNpdzp:create_urls.direct_handler (python3.8)",
+            "name": "serverlessrepo-sfn-callbac-ProcessCallbackFunction-rvlYHeEKGakl:process_callback.handler (python3.8)",
             "invokeTarget": {
                 "target": "code",
-                "projectRoot": "${workspaceFolder}/serverlessrepo-sfn-callback-urls-CreateUrls-8oRkGNhNpdzp",
-                "lambdaHandler": "create_urls.direct_handler"
+                "projectRoot": "${workspaceFolder}/serverlessrepo-sfn-callbac-ProcessCallbackFunction-rvlYHeEKGakl",
+                "lambdaHandler": "process_callback.handler"
             },
             "lambda": {
                 "runtime": "python3.8",
+                "payload": {},
+                "environmentVariables": {}
+            }
+        },
+        {
+            "type": "aws-sam",
+            "request": "direct-invoke",
+            "name": "terminateInstancefromAMI:index.handler (nodejs14.x)",
+            "invokeTarget": {
+                "target": "code",
+                "projectRoot": "${workspaceFolder}/terminateInstancefromAMI",
+                "lambdaHandler": "index.handler"
+            },
+            "lambda": {
+                "runtime": "nodejs14.x",
                 "payload": {},
                 "environmentVariables": {}
             }
@@ -48,14 +63,29 @@
         {
             "type": "aws-sam",
             "request": "direct-invoke",
-            "name": "serverlessrepo-sfn-callbac-ProcessCallbackFunction-rvlYHeEKGakl:process_callback.handler (python3.8)",
+            "name": "startInstanceFromAmi:index.handler (nodejs14.x)",
             "invokeTarget": {
                 "target": "code",
-                "projectRoot": "${workspaceFolder}/serverlessrepo-sfn-callbac-ProcessCallbackFunction-rvlYHeEKGakl",
-                "lambdaHandler": "process_callback.handler"
+                "projectRoot": "${workspaceFolder}/startInstanceFromAmi",
+                "lambdaHandler": "index.handler"
             },
             "lambda": {
-                "runtime": "python3.8",
+                "runtime": "nodejs14.x",
+                "payload": {},
+                "environmentVariables": {}
+            }
+        },
+        {
+            "type": "aws-sam",
+            "request": "direct-invoke",
+            "name": "SendEmail:index.handler (nodejs14.x)",
+            "invokeTarget": {
+                "target": "code",
+                "projectRoot": "${workspaceFolder}/SendEmail",
+                "lambdaHandler": "index.handler"
+            },
+            "lambda": {
+                "runtime": "nodejs14.x",
                 "payload": {},
                 "environmentVariables": {}
             }
@@ -101,21 +131,6 @@
             },
             "lambda": {
                 "runtime": "python3.9",
-                "payload": {},
-                "environmentVariables": {}
-            }
-        },
-        {
-            "type": "aws-sam",
-            "request": "direct-invoke",
-            "name": "AddSecurityGroupByInstanceId:index.handler (nodejs14.x)",
-            "invokeTarget": {
-                "target": "code",
-                "projectRoot": "${workspaceFolder}/AddSecurityGroupByInstanceId",
-                "lambdaHandler": "index.handler"
-            },
-            "lambda": {
-                "runtime": "nodejs14.x",
                 "payload": {},
                 "environmentVariables": {}
             }

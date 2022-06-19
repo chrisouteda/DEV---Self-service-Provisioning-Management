@@ -77,7 +77,8 @@
       "Catch": [
         {
           "ErrorEquals": [
-            "rejected","rejected_with_message"
+            "rejected",
+            "rejected_with_message"
           ],
           "ResultPath": "$.output",
           "Next": "Send Task Result"
@@ -142,6 +143,11 @@
           "Variable": "$.Fservice ",
           "StringMatches": "Qlik Sense Enterprise",
           "Next": "Qlik Data"
+        },
+        {
+          "Variable": "$.Fservice ",
+          "StringMatches": "Denodo8",
+          "Next": "Denodo8"
         }
       ],
       "Comment": "validates Ftoken to be correct",
@@ -207,6 +213,16 @@
       },
       "ResultPath": "$.machineData"
     },
+    "Denodo8": {
+      "Type": "Pass",
+      "Next": "Initiate EC2 Instance",
+      "Result": {
+        "instancePassword": "d8-0a9e6a445dm",
+        "launchTemplate": "lt-0069f99313bbad860",
+        "emailContent": "For the full detailed environment please read the following document: https://docs.google.com/document/d/14IVZ_sB4IXIXfEeDxDPL8MF5x5q5Q3O6cEIf4sVK2tU"
+      },
+      "ResultPath": "$.machineData"
+    },
     "Pass Error": {
       "Type": "Pass",
       "Next": "Send Task Result",
@@ -237,7 +253,7 @@
           "Fpublicip.$": "$.Fpublicip",
           "Ftimestart.$": "$.Ftimestart",
           "Ftimeend.$": "$.Ftimeend",
-          "instanceId.$": "$.machineData.instanceId",
+          "instanceId.$": "$.execution.Payload.instanceId",
           "instancePassword": "$.machineData.instancePassword",
           "isStopped.$": "$.isStopped",
           "GroupId.$": "States.Array($.SecurityGroup.GroupId)"
@@ -262,7 +278,7 @@
       "Type": "Task",
       "Next": "Add Instance Security Group",
       "Parameters": {
-        "Description.$": "$.machineData.instanceId",
+        "Description.$": "$.execution.Payload.instanceId",
         "GroupName.$": "$.Execution.executionId",
         "VpcId": "vpc-043158a49f541d48c",
         "TagSpecifications": [
@@ -294,7 +310,7 @@
           "Fpublicip.$": "$.Fpublicip",
           "Ftimestart.$": "$.Ftimestart",
           "Ftimeend.$": "$.Ftimeend",
-          "instanceId.$": "$.machineData.instanceId",
+          "instanceId.$": "$.execution.Payload.instanceId",
           "instancePassword": "$.machineData.instancePassword",
           "isStopped.$": "$.isStopped",
           "GroupId.$": "States.Array($.SecurityGroup.GroupId)"
@@ -352,7 +368,7 @@
           "Ftimeend.$": "$.Ftimeend",
           "executionId.$": "$.Execution.executionId",
           "instancePassword.$": "$.machineData.instancePassword",
-          "instancePublicIp.$": "$.execution.Payload",
+          "instancePublicIp.$": "$.execution.Payload.PublicIP",
           "emailContent.$": "$.machineData.emailContent"
         }
       },
@@ -362,15 +378,76 @@
     "Schedule Stop": {
       "Type": "Wait",
       "TimestampPath": "$.Ftimeend",
-      "Next": "Stopped State"
+      "Next": "Terminate EC2 Instance"
     },
-    "Stopped State": {
-      "Type": "Pass",
-      "Next": "Select Service",
-      "Result": {
-        "isStopped": "Yes"
+    "Initiate EC2 Instance": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "arn:aws:lambda:us-east-1:278406292525:function:startInstanceFromAmi:$LATEST",
+        "Payload": {
+          "step.$": "$$.State.Name",
+          "name_in_input.$": "$.name",
+          "Frequest.$": "$.Frequest",
+          "Fopportunity.$": "$.Fopportunity",
+          "Fservice.$": "$.Fservice",
+          "Fpublicip.$": "$.Fpublicip",
+          "Ftimestart.$": "$.Ftimestart",
+          "Ftimeend.$": "$.Ftimeend",
+          "launchTemplate.$": "$.machineData.launchTemplate",
+          "instancePassword": "$.machineData.instancePassword",
+          "isStopped.$": "$.isStopped"
+        }
       },
-      "ResultPath": "$.isStopped"
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException"
+          ],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 6,
+          "BackoffRate": 2
+        }
+      ],
+      "Next": "Create Security Group",
+      "ResultPath": "$.execution"
+    },
+    "Terminate EC2 Instance": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "arn:aws:lambda:us-east-1:278406292525:function:terminateInstancefromAMI:$LATEST",
+        "Payload": {
+          "step.$": "$$.State.Name",
+          "name_in_input.$": "$.name",
+          "Frequest.$": "$.Frequest",
+          "Fopportunity.$": "$.Fopportunity",
+          "Fservice.$": "$.Fservice",
+          "Fpublicip.$": "$.Fpublicip",
+          "Ftimestart.$": "$.Ftimestart",
+          "Ftimeend.$": "$.Ftimeend",
+          "launchTemplate.$": "$.machineData.launchTemplate",
+          "instancePassword": "$.machineData.instancePassword",
+          "isStopped.$": "$.isStopped",
+          "instanceId.$": "$.execution.Payload.instanceId"
+        }
+      },
+      "Retry": [
+        {
+          "ErrorEquals": [
+            "Lambda.ServiceException",
+            "Lambda.AWSLambdaException",
+            "Lambda.SdkClientException"
+          ],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 6,
+          "BackoffRate": 2
+        }
+      ],
+      "Next": "Unassign Instance Security Group",
+      "ResultPath": null
     },
     "Start-Stop EC2 Instance": {
       "Type": "Task",
